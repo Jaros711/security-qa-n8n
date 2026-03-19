@@ -1,0 +1,225 @@
+{
+  "name": "Bug Report Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bug-report",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -400,
+        48
+      ],
+      "id": "8319e609-bb1e-4706-8040-44cb193b9fba",
+      "name": "Webhook",
+      "webhookId": "ed07ba56-0543-457d-b82a-73a4b0a99371"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: \"llama-3.3-70b-versatile\",\n  response_format: { type: \"json_object\" },\n  messages: [\n    {\n      role: \"system\",\n      content: \"Jesteś testerem QA. Odpowiadaj WYŁĄCZNIE czystym JSON, bez żadnego tekstu przed ani po. Każda wartość w JSON musi zaczynać się od litery lub cyfry - nigdy od znaków =, *, #, - ani spacji.\"\n    },\n    {\n      role: \"user\",\n      content: \"Na podstawie notatek stwórz bug report w języku polskim jako JSON z polami: title, severity (Krytyczny/Wysoki/Średni/Niski), environment, steps (tablica stringów), expected, actual, recommendation.\\n\\nNotatki: \" + $json.body.notes\n    }\n  ]\n}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        48,
+        -48
+      ],
+      "id": "eed0548d-2d1d-4cbb-9a8d-bd722a64a457",
+      "name": "HTTP Request",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "7ilBpvUoiTYahla0",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "owner": {
+          "__rl": true,
+          "value": "Jaros711",
+          "mode": "name"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "security-qa-n8n",
+          "mode": "name"
+        },
+        "title": "={{ $json.title }}",
+        "body": "=={{ \n'**Severity:** ' + $json.severity + '\\n\\n' +\n\n'**Environment:**\\n```json\\n' + \n$json.environment + \n'\\n```\\n\\n' +\n\n'## Steps to reproduce\\n' + \n$json.steps + '\\n\\n' +\n\n'**Expected:**\\n' + $json.expected + '\\n\\n' +\n'**Actual:**\\n' + $json.actual + '\\n\\n' +\n\n'## Recommendation\\n' + $json.recommendation \n}}",
+        "labels": [
+          {
+            "label": "={{ $json.severity }}"
+          }
+        ],
+        "assignees": []
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        496,
+        -48
+      ],
+      "id": "b15d79df-4c0b-4b07-91ac-22b8d9638cdf",
+      "name": "Create an issue",
+      "webhookId": "8dac7096-1d95-434d-9215-496c3002f98c",
+      "credentials": {
+        "githubApi": {
+          "id": "qYkFzoyGegK62nLS",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f677d1d2-475c-461c-9070-8405ed00c2b3",
+              "leftValue": "{{ $json.body.notes }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -176,
+        48
+      ],
+      "id": "4b040515-9572-4d4f-9d3d-2ceadab715d8",
+      "name": "If notes not empty"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{ \"error\": \"Field 'notes' is required\" }\n",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        48,
+        144
+      ],
+      "id": "faf308b3-6a87-4e05-8360-6684f68d270d",
+      "name": "Respond to Webhook 400"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = JSON.parse($input.first().json.choices[0].message.content);\n\nconst clean = (str) => {\n  if (!str) return '';\n  return String(str).replace(/^[^a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ0-9]+/u, '').trim();\n};\n\nconst steps = Array.isArray(raw.steps)\n  ? raw.steps\n      .map(s => clean(s))\n      .map((s, i) => (i + 1) + '. ' + s)\n      .join('\\n')\n  : '';\n\nreturn [{\n  json: {\n    title: clean(raw.title) || 'Bug report ' + new Date().toISOString().slice(0, 10),\n    severity: clean(raw.severity).replace(/^severity:\\s*/i, '') || 'Niski',\n    environment: JSON.stringify(raw.environment),\n    steps,\n    expected: clean(raw.expected),\n    actual: clean(raw.actual),\n    recommendation: clean(raw.recommendation),\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        -48
+      ],
+      "id": "646fbe55-8555-4cd9-866b-5bb1c83ca1e8",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If notes not empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If notes not empty": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook 400",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Create an issue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "987fece7-954a-4a21-88a9-a1cd1c131db0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4f3bc2e1592e1b58bde2fbf1fe9d69c39f9c826313e3c6831ebb1676abc40bfc"
+  },
+  "id": "ONmphJg1kKjNzaV1",
+  "tags": []
+}
