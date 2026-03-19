@@ -11,6 +11,10 @@ Notatki w języku naturalnym → ustrukturyzowany issue na GitHubie w ~10 sekund
 **Output (GitHub Issue):**
 → Tytuł, severity, środowisko, kroki reprodukcji, expected/actual, rekomendacja
 
+## Przykładowy output
+
+![Bug report](assets/Bug%20report.png)
+
 ## Stack
 
 - **n8n** — orkiestracja workflow
@@ -27,6 +31,10 @@ Webhook → walidacja → LLM → sanityzacja → GitHub Issue
 4. Węzeł Code sanityzuje output LLM
 5. GitHub API tworzy issue z odpowiednim labelem severity
 
+## Workflow
+
+![Workflow n8n](assets/Workflow%20n8n.png)
+
 ## Uruchomienie
 ```bash
 curl -X POST http://localhost:5678/webhook/bug-report \
@@ -36,5 +44,6 @@ curl -X POST http://localhost:5678/webhook/bug-report \
 
 ## Przykładowe issues
 
-- [#19 Nieprawidłowy odcień przycisku Anuluj](link)
-- [#16 Podatność na SQL injection w wyszukiwarce](link)
+- [#21 Podatność na SQL injection w wyszukiwarce](https://github.com/Jaros711/security-qa-n8n/issues/21)
+- [#14 Nieprawidłowy odcień przycisku Anuluj](https://github.com/Jaros711/security-qa-n8n/issues/14)
+
