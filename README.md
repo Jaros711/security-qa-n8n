@@ -45,5 +45,5 @@ curl -X POST http://localhost:5678/webhook/bug-report \
 ## Przykładowe issues
 
 - [#21 Podatność na SQL injection w wyszukiwarce](https://github.com/Jaros711/security-qa-n8n/issues/21)
-- [#14 Nieprawidłowy odcień przycisku Anuluj](https://github.com/Jaros711/security-qa-n8n/issues/14)
+- [#1 Błąd logowania na przeglądarce Firefox](https://github.com/Jaros711/security-qa-n8n/issues/1)
 
